@@ -1,10 +1,5 @@
-from xml.etree import ElementTree as et
-
+import re
 filename = './TESTER.xml'
-tree = et.parse(filename)
-# tree.find('.//IsWarped').Value = 'false'
-warped = tree.findall('.//IsWarped')
-for w in warped:
-    w.attrib["Value"] = "false"
-# print(repr(warped))
-tree.write(filename)
+xmlstring = open(filename, 'r').read()
+xmlstring = re.sub('<IsWarped Value="true" />', '<IsWarped Value="false" />' , xmlstring)
+open('./output.xml', 'w').write(xmlstring)
