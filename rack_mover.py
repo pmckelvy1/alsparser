@@ -12,25 +12,31 @@ SEED_GROUP_NAMES = [
 ]
 
 TEMPLATE_GROUP_NAMES = [
-    'KICK GROUP',
-    'PERC GROUP',
-    'CLAP GROUP',
-    'SNARE GROUP',
-    'HAT GROUP',
-    'TAMB / SHAKER GROUP',
-    'CYMBAL GROUP',
-    'SUB GROUP',
     'BASS GROUP',
     'CHORDS GROUP',
-    'LEAD GROUP',
-    'FX GROUP',
-    'VOX GROUP'
+    'DRUMS GROUP'
 ]
+
+# TEMPLATE_GROUP_NAMES = [
+#     'KICK GROUP',
+#     'PERC GROUP',
+#     'CLAP GROUP',
+#     'SNARE GROUP',
+#     'HAT GROUP',
+#     'TAMB / SHAKER GROUP',
+#     'CYMBAL GROUP',
+#     'SUB GROUP',
+#     'BASS GROUP',
+#     'CHORDS GROUP',
+#     'LEAD GROUP',
+#     'FX GROUP',
+#     'VOX GROUP'
+# ]
 
 # open and read file
 proj_dir = './projects/rack_mover/'
 seed_file_name = 'test_rack.xml'
-template_file_name = 'target_template.xml'
+template_file_name = 'simp_template.xml'
 
 def get_group_datas(xmlstr, group_names):
     xml_start = 0
@@ -45,7 +51,7 @@ def get_group_datas(xmlstr, group_names):
         # set new starting point for search
         xml_start += found_group.end()
     end_idx = get_first_return_idx(xmlstr)
-    end_data = {'name': 'END', 'id': 0, 'start_idx': end_idx}
+    end_data = {'name': 'END', 'id': 0, 'start_idx': end_idx, 'end_idx': len(xmlstr)}
     group_datas[-1]['end_idx'] = end_idx
     group_datas.append(end_data)
     return group_datas
@@ -62,7 +68,8 @@ def get_first_return_idx(xmlstr):
 def get_group_xmls(xmlstr, group_datas):
     for i in range(0, len(group_datas)):
         if i == len(group_datas) - 1:
-            break
+            group_datas[i]['xml'] = ''
+            continue
         start_idx = group_datas[i]['start_idx']
         end_idx = group_datas[i+1]['start_idx']
         group_datas[i]['xml'] = xmlstr[start_idx:end_idx]
@@ -85,13 +92,14 @@ def get_seed_group_data():
             group_inner_tracks = ''
         else:
             group_inner_tracks = get_group_inner_tracks(seed_group_datas[i]['xml'])
-        new_id = seed_group_datas[i]['id']
         seed_group_datas[i]['inner_tracks'] = group_inner_tracks
     return seed_group_datas
 
 def get_template_group_data():
     template_xml = open(proj_dir + template_file_name, 'r').read()
     template_group_datas = get_group_datas(template_xml, TEMPLATE_GROUP_NAMES)
+    template_group_datas = get_group_xmls(template_xml, template_group_datas)
+    # print_data_2(template_group_datas, template_xml)
     return template_group_datas
 
 def set_group_track_id(inner_track_xml, new_id):
@@ -105,20 +113,44 @@ def route_inner_tracks(seed_group_datas, template_group_datas):
         seed_group_datas[i]['inner_tracks'] = set_group_track_id(sgd['inner_tracks'], template_group['id'])
     return seed_group_datas
 
+def prune_inner_tracks(template_group_datas):
+    for i in range(0, len(template_group_datas)):
+        if template_group_datas[i]['name'] == 'END':
+            continue
+        tgd = template_group_datas[i]
+        group_track_end_idx = get_group_track_end_idx(tgd['xml'])
+        template_group_datas[i]['xml'] = tgd['xml'][:group_track_end_idx]
+    return template_group_datas
+
 def run():
     # gather data
     seed_group_datas = get_seed_group_data()
     template_group_datas = get_template_group_data()
     # modify group ids for inner tracks
     route_inner_tracks(seed_group_datas, template_group_datas)
-    print_data(seed_group_datas)
-    print_data(template_group_datas)
+    print_datas(seed_group_datas)
+    # prune template inner tracks from template group xml
+    template_group_datas = prune_inner_tracks(template_group_datas)
+    print_datas(template_group_datas)
 
-def print_data(data):
+def print_datas(data):
     for d in data:
         print('\n * * * * * * \n')
-        for k, v in d.items():
-            print(k + ' : ' + json.dumps(str(v)))
+        print_data(d)
+
+def print_data(d):
+    for k, v in d.items():
+        print(k + ' : ' + json.dumps(str(v)))
+
+def print_data_2(data, xml):
+    for d in data:
+        print('\n * * * * * * \n')
+        print_data(d)
+        print('\n * * * START * * * \n')
+        print(xml[d['start_idx'] - 100:d['start_idx'] + 100])
+        print('\n * * * END * * * \n')
+        print(xml[d['end_idx'] - 100:d['end_idx'] + 100])
+        print('\n * * * * * * \n')
 
 # # add pitch control to all simplers
 # group_string = re.search(r'(?P<pitcher><MidiPitcher.*</MidiPitcher>)', xmlstring, flags=re.DOTALL)
