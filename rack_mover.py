@@ -83,8 +83,7 @@ def get_group_track_end_idx(group_xml):
     group_track = re.search(r'(?P<group_track>\t+</GroupTrack>)', group_xml, flags=re.DOTALL)
     return group_track.end()
 
-def get_seed_group_data():
-    seed_xml = open(proj_dir + seed_file_name, 'r').read()
+def get_seed_group_data(seed_xml):
     seed_group_datas = get_group_datas(seed_xml, SEED_GROUP_NAMES)
     seed_group_datas = get_group_xmls(seed_xml, seed_group_datas)
     for i in range(0, len(seed_group_datas)):
@@ -95,8 +94,7 @@ def get_seed_group_data():
         seed_group_datas[i]['inner_tracks'] = group_inner_tracks
     return seed_group_datas
 
-def get_template_group_data():
-    template_xml = open(proj_dir + template_file_name, 'r').read()
+def get_template_group_data(template_xml):
     template_group_datas = get_group_datas(template_xml, TEMPLATE_GROUP_NAMES)
     template_group_datas = get_group_xmls(template_xml, template_group_datas)
     # print_data_2(template_group_datas, template_xml)
@@ -122,16 +120,47 @@ def prune_inner_tracks(template_group_datas):
         template_group_datas[i]['xml'] = tgd['xml'][:group_track_end_idx]
     return template_group_datas
 
+def add_seed_tracks_to_template_groups(seed_group_datas, template_group_datas):
+    for i in range(0, len(template_group_datas)):
+        tgd = template_group_datas[i]
+        group_name = tgd['name']
+        seed_group = [sgd for sgd in seed_group_datas if sgd['name'] == group_name]
+        if len(seed_group) == 0:
+            continue
+        template_group_datas[i]['xml'] = tgd['xml'] + seed_group[0]['inner_tracks']
+    return template_group_datas
+
+def add_final_groups_to_template(template_group_datas, template_xml):
+    all_groups_xml = ''.join([xml['xml'] for xml in template_group_datas if xml['name'] != 'END'])
+    final_xml = template_xml[:template_group_datas[0]['start_idx']] + all_groups_xml + '\n'
+    final_xml = final_xml + template_xml[template_group_datas[len(template_group_datas) - 1]['start_idx']:]
+    return final_xml
+
 def run():
+    # get xmls
+    seed_xml = open(proj_dir + seed_file_name, 'r').read()
+    template_xml = open(proj_dir + template_file_name, 'r').read()
+
     # gather data
-    seed_group_datas = get_seed_group_data()
-    template_group_datas = get_template_group_data()
+    seed_group_datas = get_seed_group_data(seed_xml)
+    template_group_datas = get_template_group_data(template_xml)
+
     # modify group ids for inner tracks
     route_inner_tracks(seed_group_datas, template_group_datas)
-    print_datas(seed_group_datas)
+    # print_datas(seed_group_datas)
+
     # prune template inner tracks from template group xml
     template_group_datas = prune_inner_tracks(template_group_datas)
+    # print_datas(template_group_datas)
+
+    # add seed inner tracks to template groups
+    template_group_datas = add_seed_tracks_to_template_groups(seed_group_datas, template_group_datas)
     print_datas(template_group_datas)
+
+    # recombine final xml
+    final_xml_str = add_final_groups_to_template(template_group_datas, template_xml)
+    open('./final.xml', 'w').write(final_xml_str)
+
 
 def print_datas(data):
     for d in data:
