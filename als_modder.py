@@ -24,45 +24,88 @@ class ALSModder():
 
     def get_group_infos(self, tree):
         groups = []
+        name_by_id = {}
+        id_by_name = {}
         for el in tree.iter('GroupTrack'):
-            groups.append({'group_id': self.get_track_id(el), 'group_name': self.get_track_name(el)})
-        return groups
+            group_id = self.get_track_id(el)
+            group_name = self.get_track_name(el)
+            groups.append({'group_id': group_id, 'group_name': group_name})
+            name_by_id[group_id] = group_name
+            id_by_name[group_name] = group_id
+        return groups, name_by_id, id_by_name
 
     def transfer_tracks(self):
         # get group infos from target tree
-        target_group_infos = self.get_group_infos(self.target_tree)
+        target_group_infos, target_group_name_by_id, target_group_id_by_name = self.get_group_infos(self.target_tree)
+
         # get group infos from source tree
-        source_group_infos = self.get_group_infos(self.source_tree)
-        source_group_ids = [info['group_id'] for info in source_group_infos]
+        source_group_infos, source_group_name_by_id, source_group_id_by_name = self.get_group_infos(self.source_tree)
+        source_group_names = [info['group_name'] for info in source_group_infos]
+
+        # get lists of source tracks by their group names
+        source_tracks = self.get_all_tracks(self.source_tree)
+        source_tracks_by_group_name = self.get_tracks_by_group_name(source_tracks, source_group_name_by_id)
+
         # remove target tracks for each target group id w/ corresponding source name
         target_tracks = self.get_all_tracks(self.target_tree)
 
+        self.print_source_tracks()
         self.print_target_tracks()
 
-        for target_at in target_tracks.iter('AudioTrack'):
-            if self.get_group_id(target_at) in source_group_ids:
+        for target_at in target_tracks.findall('AudioTrack'):
+            if self.get_group_name(target_at, target_group_name_by_id) in source_group_names:
                 target_tracks.remove(target_at)
 
-        for target_at in target_tracks.iter('MidiTrack'):
-            if self.get_group_id(target_at) in source_group_ids:
-                target_tracks.remove(target_at)
+        for target_mt in target_tracks.findall('MidiTrack'):
+            if self.get_group_name(target_mt, target_group_name_by_id) in source_group_names:
+                target_tracks.remove(target_mt)
 
-        self.target_tree.find('./LiveSet').remove(self.target_tree.find('./LiveSet/Tracks'))
-        self.target_tree.find('./LiveSet').insert(0, target_tracks)
+        seen = {}
+        for idx, track in enumerate(target_tracks):
+            if track.tag == 'GroupTrack' and self.get_track_name(track) not in seen:
+                seen[self.get_track_name(track)] = True
+                group_name = self.get_track_name(track)
+                if group_name in source_tracks_by_group_name:
+                    source_group_tracks = source_tracks_by_group_name[group_name]
+                    i = 1
+                    for sgt in source_group_tracks:
+                        self.set_group_id(sgt, self.get_track_id(track))
+                        target_tracks.insert(idx + i, sgt)
+                        i += 1
 
+        self.print_source_tracks()
         self.print_target_tracks()
 
         # get midi & audio tracks from source tree
-
         # route source tracks to target groups
-
         # add source tracks under corresponding target groups
+
+        # replace target_tracks
+        self.target_tree.find('./LiveSet').remove(self.target_tree.find('./LiveSet/Tracks'))
+        self.target_tree.find('./LiveSet').insert(0, target_tracks)
 
         # verify unique ids
         # alter track ids if necessary
 
         # print output to file
 
+    def get_group_name(self, track, group_name_by_id):
+        group_id = self.get_group_id(track)
+        if group_id in group_name_by_id:
+            return group_name_by_id[group_id]
+        else:
+            return ''
+
+    def get_tracks_by_group_name(self, tracks, group_name_by_id):
+        tracks_by_group_name = {}
+        for track in tracks:
+            if track.tag == 'ReturnTrack':
+                continue
+            elif track.tag == 'GroupTrack':
+                tracks_by_group_name[self.get_track_name(track)] = []
+            else:
+                tracks_by_group_name[self.get_group_name(track, group_name_by_id)].append(track)
+        return tracks_by_group_name
 
     @staticmethod
     def get_track_id(track):
@@ -101,6 +144,8 @@ class ALSModder():
         print('> > > %s Tracks > > >\n' % type_name)
         print('> > > > > > > > > > > > >\n')
         for track in tracks:
+            if track.tag == 'ReturnTrack':
+                continue
             print('* * * * * * * * * *')
             print('\t' + track.tag + ' , ' + self.get_track_name(track) + ' , ' + self.get_track_id(track) + ' , ' + self.get_group_id(track))
 
