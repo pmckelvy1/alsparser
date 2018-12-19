@@ -2,7 +2,8 @@ import xml.etree.ElementTree as et
 
 
 class ALSModder():
-    def __init__(self):
+    def __init__(self, project_path):
+        self.project_path = project_path
         self.output_filename = ''
         self.source_tree = None
         self.target_tree = None
@@ -11,15 +12,16 @@ class ALSModder():
     def load_source_file(self, source_filename):
         filename_pieces = source_filename.split('.')
         self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
-        self.source_tree = et.parse(source_filename)
+        self.source_tree = et.parse(self.project_path + source_filename)
 
     def load_target_file(self, target_filename):
-        self.target_tree = et.parse(target_filename)
+        self.target_tree = et.parse(self.project_path + target_filename)
 
     def write(self):
-        # self.target_tree.write(self.output_filename)
-        tree_str = et.tostring(self.target_tree)
-        res = self.add_to_top + tree_str
+        self.target_tree.write(self.project_path + self.output_filename)
+        tree_str = et.tostring(self.target_tree.getroot())
+        res = self.add_to_top + tree_str.decode('utf-8')
+        print('output file: ' + self.output_filename)
         open(self.output_filename, 'w').write(res)
 
     def get_group_infos(self, tree):
@@ -49,8 +51,8 @@ class ALSModder():
         # remove target tracks for each target group id w/ corresponding source name
         target_tracks = self.get_all_tracks(self.target_tree)
 
-        self.print_source_tracks()
-        self.print_target_tracks()
+        # self.print_source_tracks()
+        # self.print_target_tracks()
 
         for target_at in target_tracks.findall('AudioTrack'):
             if self.get_group_name(target_at, target_group_name_by_id) in source_group_names:
@@ -70,11 +72,16 @@ class ALSModder():
                     i = 1
                     for sgt in source_group_tracks:
                         self.set_group_id(sgt, self.get_track_id(track))
+                        target_ids = self.get_all_track_ids(target_tracks)
+                        sgt_id = self.get_track_id(sgt)
+                        while sgt_id in target_ids:
+                            sgt_id = str(int(sgt_id) + 1)
+                        self.set_track_id(sgt, sgt_id)
                         target_tracks.insert(idx + i, sgt)
                         i += 1
 
-        self.print_source_tracks()
-        self.print_target_tracks()
+        # self.print_source_tracks()
+        # self.print_target_tracks()
 
         # get midi & audio tracks from source tree
         # route source tracks to target groups
@@ -88,6 +95,7 @@ class ALSModder():
         # alter track ids if necessary
 
         # print output to file
+        self.write()
 
     def get_group_name(self, track, group_name_by_id):
         group_id = self.get_group_id(track)
@@ -106,6 +114,9 @@ class ALSModder():
             else:
                 tracks_by_group_name[self.get_group_name(track, group_name_by_id)].append(track)
         return tracks_by_group_name
+
+    def get_all_track_ids(self, tracks):
+        return [self.get_track_id(track) for track in tracks]
 
     @staticmethod
     def get_track_id(track):
