@@ -10,11 +10,14 @@ class ALSModder():
         self.add_to_top = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
     def load_source_file(self, source_filename):
-        filename_pieces = source_filename.split('.')
-        self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
+        # filename_pieces = source_filename.split('.')
+        # self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
         self.source_tree = et.parse(self.project_path + source_filename)
 
     def load_target_file(self, target_filename):
+        # filename_pieces = target_filename.split('.')
+        # self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
+        self.output_filename = target_filename
         self.target_tree = et.parse(self.project_path + target_filename)
 
     def write(self):
