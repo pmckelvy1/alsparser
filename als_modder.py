@@ -55,7 +55,7 @@ class ALSModder():
         target_tracks = self.get_all_tracks(self.target_tree)
 
         # self.print_source_tracks()
-        # self.print_target_tracks()
+        self.print_target_tracks()
 
         for target_at in target_tracks.findall('AudioTrack'):
             if self.get_group_name(target_at, target_group_name_by_id) in source_group_names:
@@ -84,7 +84,7 @@ class ALSModder():
                         i += 1
 
         # self.print_source_tracks()
-        # self.print_target_tracks()
+        self.print_target_tracks()
 
         # get midi & audio tracks from source tree
         # route source tracks to target groups
