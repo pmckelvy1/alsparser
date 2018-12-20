@@ -2,8 +2,9 @@ import xml.etree.ElementTree as et
 
 
 class ALSModder():
-    def __init__(self, project_path):
-        self.project_path = project_path
+    def __init__(self, source_project_path, target_project_path):
+        self.source_project_path = source_project_path
+        self.target_project_path = target_project_path
         self.output_filename = ''
         self.source_tree = None
         self.target_tree = None
@@ -12,20 +13,20 @@ class ALSModder():
     def load_source_file(self, source_filename):
         # filename_pieces = source_filename.split('.')
         # self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
-        self.source_tree = et.parse(self.project_path + source_filename)
+        self.source_tree = et.parse(self.source_project_path + source_filename)
 
     def load_target_file(self, target_filename):
-        # filename_pieces = target_filename.split('.')
-        # self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
-        self.output_filename = target_filename
-        self.target_tree = et.parse(self.project_path + target_filename)
+        filename_pieces = target_filename.split('.')
+        self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
+        # self.output_filename = self.source_project_path + target_filename
+        self.target_tree = et.parse(self.target_project_path + target_filename)
 
     def write(self):
-        self.target_tree.write(self.project_path + self.output_filename)
+        self.target_tree.write(self.source_project_path + self.output_filename)
         tree_str = et.tostring(self.target_tree.getroot())
         res = self.add_to_top + tree_str.decode('utf-8')
         print('output file: ' + self.output_filename)
-        open(self.output_filename, 'w').write(res)
+        open(self.source_project_path + self.output_filename, 'w').write(res)
 
     def get_group_infos(self, tree):
         groups = []
@@ -86,10 +87,6 @@ class ALSModder():
         # self.print_source_tracks()
         self.print_target_tracks()
 
-        # get midi & audio tracks from source tree
-        # route source tracks to target groups
-        # add source tracks under corresponding target groups
-
         # replace target_tracks
         self.target_tree.find('./LiveSet').remove(self.target_tree.find('./LiveSet/Tracks'))
         self.target_tree.find('./LiveSet').insert(0, target_tracks)
@@ -110,12 +107,15 @@ class ALSModder():
     def get_tracks_by_group_name(self, tracks, group_name_by_id):
         tracks_by_group_name = {}
         for track in tracks:
+            print(track.tag)
             if track.tag == 'ReturnTrack':
                 continue
             elif track.tag == 'GroupTrack':
                 tracks_by_group_name[self.get_track_name(track)] = []
             else:
-                tracks_by_group_name[self.get_group_name(track, group_name_by_id)].append(track)
+                group_name = self.get_group_name(track, group_name_by_id)
+                if group_name in tracks_by_group_name:
+                    tracks_by_group_name[group_name].append(track)
         return tracks_by_group_name
 
     def get_all_track_ids(self, tracks):
