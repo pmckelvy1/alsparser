@@ -25,8 +25,19 @@ class ALSModder():
         self.target_tree.write(self.source_project_path + self.output_filename)
         tree_str = et.tostring(self.target_tree.getroot())
         res = self.add_to_top + tree_str.decode('utf-8')
-        print('output file: ' + self.output_filename)
+        print('output file: ' + self.output_filename, self.get_master_tempo(self.target_tree))
         open(self.source_project_path + self.output_filename, 'w').write(res)
+
+    def transfer_session(self):
+        self.transfer_tracks()
+        source_tempo = self.get_master_tempo(self.source_tree)
+        target_tempo = self.get_master_tempo(self.target_tree)
+        print(source_tempo, target_tempo)
+        self.transfer_tempo()
+        source_tempo = self.get_master_tempo(self.source_tree)
+        target_tempo = self.get_master_tempo(self.target_tree)
+        print(source_tempo, target_tempo)
+        self.write()
 
     def get_group_infos(self, tree):
         groups = []
@@ -39,6 +50,10 @@ class ALSModder():
             name_by_id[group_id] = group_name
             id_by_name[group_name] = group_id
         return groups, name_by_id, id_by_name
+
+    def transfer_tempo(self):
+        source_temp = self.get_master_tempo(self.source_tree)
+        self.target_tree = self.set_master_tempo(self.target_tree, source_temp)
 
     def transfer_tracks(self):
         # get group infos from target tree
@@ -90,12 +105,6 @@ class ALSModder():
         # replace target_tracks
         self.target_tree.find('./LiveSet').remove(self.target_tree.find('./LiveSet/Tracks'))
         self.target_tree.find('./LiveSet').insert(0, target_tracks)
-
-        # verify unique ids
-        # alter track ids if necessary
-
-        # print output to file
-        self.write()
 
     def get_group_name(self, track, group_name_by_id):
         group_id = self.get_group_id(track)
@@ -152,6 +161,16 @@ class ALSModder():
         all_tracks = tree.find('./LiveSet/Tracks')
         return all_tracks
 
+    @staticmethod
+    def get_master_tempo(tree):
+        return tree.find('./LiveSet/MasterTrack/DeviceChain/Mixer/Tempo/Manual').get('Value')
+
+    @staticmethod
+    def set_master_tempo(tree, new_tempo):
+        tree.find('./LiveSet/MasterTrack/DeviceChain/Mixer/Tempo/Manual').set('Value', new_tempo)
+        tree.find('./LiveSet/MasterTrack/DeviceChain/Mixer/Tempo/ArrangerAutomation/Events/FloatEvent').set('Value', new_tempo)
+        return tree
+
     def print_tracks(self, tracks, type_name):
         print('\n\n')
         print('> > > > > > > > > > > > >\n')
@@ -168,3 +187,7 @@ class ALSModder():
 
     def print_target_tracks(self):
         self.print_tracks(self.get_all_tracks(self.target_tree), 'Target')
+
+    def test(self):
+        tempo = self.get_master_tempo(self.source_tree)
+        print(tempo)
