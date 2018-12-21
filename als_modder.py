@@ -11,14 +11,11 @@ class ALSModder():
         self.add_to_top = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
     def load_source_file(self, source_filename):
-        # filename_pieces = source_filename.split('.')
-        # self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
         self.source_tree = et.parse(self.source_project_path + source_filename)
 
     def load_target_file(self, target_filename):
         filename_pieces = target_filename.split('.')
         self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
-        # self.output_filename = self.source_project_path + target_filename
         self.target_tree = et.parse(self.target_project_path + target_filename)
 
     def write(self):
@@ -30,26 +27,18 @@ class ALSModder():
 
     def transfer_session(self):
         self.transfer_tracks()
-        source_tempo = self.get_master_tempo(self.source_tree)
-        target_tempo = self.get_master_tempo(self.target_tree)
-        print(source_tempo, target_tempo)
         self.transfer_tempo()
-        source_tempo = self.get_master_tempo(self.source_tree)
-        target_tempo = self.get_master_tempo(self.target_tree)
-        print(source_tempo, target_tempo)
         self.write()
 
     def get_group_infos(self, tree):
         groups = []
         name_by_id = {}
-        id_by_name = {}
         for el in tree.iter('GroupTrack'):
             group_id = self.get_track_id(el)
             group_name = self.get_track_name(el)
             groups.append({'group_id': group_id, 'group_name': group_name})
             name_by_id[group_id] = group_name
-            id_by_name[group_name] = group_id
-        return groups, name_by_id, id_by_name
+        return groups, name_by_id
 
     def transfer_tempo(self):
         source_temp = self.get_master_tempo(self.source_tree)
@@ -57,10 +46,10 @@ class ALSModder():
 
     def transfer_tracks(self):
         # get group infos from target tree
-        target_group_infos, target_group_name_by_id, target_group_id_by_name = self.get_group_infos(self.target_tree)
+        target_group_infos, target_group_name_by_id = self.get_group_infos(self.target_tree)
 
         # get group infos from source tree
-        source_group_infos, source_group_name_by_id, source_group_id_by_name = self.get_group_infos(self.source_tree)
+        source_group_infos, source_group_name_by_id = self.get_group_infos(self.source_tree)
         source_group_names = [info['group_name'] for info in source_group_infos]
 
         # get lists of source tracks by their group names
@@ -71,7 +60,7 @@ class ALSModder():
         target_tracks = self.get_all_tracks(self.target_tree)
 
         # self.print_source_tracks()
-        self.print_target_tracks()
+        # self.print_target_tracks()
 
         for target_at in target_tracks.findall('AudioTrack'):
             if self.get_group_name(target_at, target_group_name_by_id) in source_group_names:
@@ -100,7 +89,7 @@ class ALSModder():
                         i += 1
 
         # self.print_source_tracks()
-        self.print_target_tracks()
+        # self.print_target_tracks()
 
         # replace target_tracks
         self.target_tree.find('./LiveSet').remove(self.target_tree.find('./LiveSet/Tracks'))
@@ -189,5 +178,6 @@ class ALSModder():
         self.print_tracks(self.get_all_tracks(self.target_tree), 'Target')
 
     def test(self):
-        tempo = self.get_master_tempo(self.source_tree)
-        print(tempo)
+        print('running test function...')
+        # sandbox area
+        # run functions, print their output
