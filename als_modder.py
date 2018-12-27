@@ -22,7 +22,7 @@ class ALSModder():
         self.target_tree.write(self.source_project_path + self.output_filename)
         tree_str = et.tostring(self.target_tree.getroot())
         res = self.add_to_top + tree_str.decode('utf-8')
-        print('output file: ' + self.output_filename, self.get_master_tempo(self.target_tree))
+        print('output file: ' + self.source_project_path + self.output_filename, self.get_master_tempo(self.target_tree))
         open(self.source_project_path + self.output_filename, 'w').write(res)
 
     def transfer_session(self):
@@ -105,7 +105,6 @@ class ALSModder():
     def get_tracks_by_group_name(self, tracks, group_name_by_id):
         tracks_by_group_name = {}
         for track in tracks:
-            print(track.tag)
             if track.tag == 'ReturnTrack':
                 continue
             elif track.tag == 'GroupTrack':
@@ -118,6 +117,9 @@ class ALSModder():
 
     def get_all_track_ids(self, tracks):
         return [self.get_track_id(track) for track in tracks]
+
+    def get_group_devices(self, track):
+        return track.find('./DeviceChain/DeviceChain/Devices/')
 
     @staticmethod
     def get_track_id(track):

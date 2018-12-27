@@ -1,7 +1,8 @@
 import re
 
 # open and read file
-filename = './TESTER.xml'
+# filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a.xml'
+filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_b.xml'
 xmlstring = open(filename, 'r').read()
 
 # unwarp all simplers
@@ -36,4 +37,5 @@ while i > 0:
     i -= 1
 
 # write output
-open('./output.xml', 'w').write(final_str)
+# open('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a_output.xml', 'w').write(final_str)
+open('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_b_output.xml', 'w').write(final_str)
