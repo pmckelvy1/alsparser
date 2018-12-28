@@ -10,7 +10,12 @@ class ALSModder():
         self.target_tree = None
         self.add_to_top = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
+    def load_source_string(self, str):
+        self.source_tree = et.fromstring(str)
+
     def load_source_file(self, source_filename):
+        filename_pieces = source_filename.split('.')
+        self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
         self.source_tree = et.parse(self.source_project_path + source_filename)
 
     def load_target_file(self, target_filename):
@@ -18,17 +23,68 @@ class ALSModder():
         self.output_filename = filename_pieces[0] + '_output.' + filename_pieces[1]
         self.target_tree = et.parse(self.target_project_path + target_filename)
 
-    def write(self):
-        self.target_tree.write(self.source_project_path + self.output_filename)
-        tree_str = et.tostring(self.target_tree.getroot())
+    def write(self, target_tree=True):
+        if target_tree:
+            write_tree = self.target_tree
+        else:
+            write_tree = self.source_tree
+
+        write_tree.write(self.source_project_path + self.output_filename)
+        tree_str = et.tostring(write_tree.getroot())
         res = self.add_to_top + tree_str.decode('utf-8')
-        print('output file: ' + self.source_project_path + self.output_filename, self.get_master_tempo(self.target_tree))
         open(self.source_project_path + self.output_filename, 'w').write(res)
 
     def transfer_session(self):
         self.transfer_tracks()
         self.transfer_tempo()
         self.write()
+
+    def mod_chord_rack(self, isWarped=False):
+        print('modding now...')
+        # warp / unwarp all simplers
+        for el in self.source_tree.iter('IsWarped'):
+            print(el.tag)
+            if isWarped:
+                el.set('Value', 'true')
+            else:
+                el.set('Value', 'false')
+
+        # copy pitch shifters
+        pitch_shifter = self.source_tree.find('./LiveSet/Tracks/MidiTrack/DeviceChain/DeviceChain/Devices/DrumGroupDevice/Branches/DrumBranch/DeviceChain/MidiToAudioDeviceChain/Devices/MidiPitcher')
+        midi_pitcher_id = 1
+        # all_ids = self.source_tree.find()
+        for el in self.source_tree.findall('./LiveSet/Tracks/MidiTrack/DeviceChain/DeviceChain/Devices/DrumGroupDevice/Branches/DrumBranch/DeviceChain/MidiToAudioDeviceChain/Devices'):
+            print(el.tag)
+            add_midi_pitcher = True
+            sub_els = []
+            for sub_el in list(el):
+                sub_els.append(sub_el)
+                self.print_track(sub_el)
+                if sub_el.tag == 'MidiPitcher':
+                    add_midi_pitcher = False
+            if add_midi_pitcher:
+                for sl in sub_els:
+                    print(':: removing ::')
+                    self.print_track(sl)
+                    el.remove(sl)
+                midi_pitcher_id += 1
+                self.set_track_id(pitch_shifter, str(midi_pitcher_id))
+                print(":: midi pitcher ::")
+                self.print_track(pitch_shifter)
+                el.append(pitch_shifter)
+                el.extend(sub_els)
+
+        self.write(target_tree=False)
+
+    def mod_ids(self):
+        source_tracks = self.get_all_tracks(self.source_tree)
+        all_track_id_counts = self.get_all_track_ids(source_tracks, duplicates_only=True)
+        for idx, track in enumerate(source_tracks):
+            track_id = self.get_track_id(track)
+            while track_id in all_track_id_counts and all_track_id_counts[track_id] > 1:
+                track_id = str(int(track_id) + 1)
+            all_track_id_counts[track_id] -= 1
+            self.set_track_id(track, track_id)
 
     def get_group_infos(self, tree):
         groups = []
@@ -115,8 +171,19 @@ class ALSModder():
                     tracks_by_group_name[group_name].append(track)
         return tracks_by_group_name
 
-    def get_all_track_ids(self, tracks):
-        return [self.get_track_id(track) for track in tracks]
+    def get_all_track_ids(self, tracks, duplicates_only=False):
+        if duplicates_only:
+            all_track_ids = [self.get_track_id(track) for track in tracks]
+            res = []
+            counts = {}
+            for track_id in all_track_ids:
+                if track_id not in counts:
+                    counts[track_id] = 1
+                else:
+                    counts[track_id] += 1
+            return counts
+        else:
+            return [self.get_track_id(track) for track in tracks]
 
     def get_group_devices(self, track):
         return track.find('./DeviceChain/DeviceChain/Devices/')
@@ -145,7 +212,7 @@ class ALSModder():
 
     @staticmethod
     def get_track_name(track):
-        return track.find('./Name/EffectiveName').get('Value')
+         return track.find('./Name/EffectiveName').get('Value')
 
     @staticmethod
     def get_all_tracks(tree):
@@ -183,3 +250,7 @@ class ALSModder():
         print('running test function...')
         # sandbox area
         # run functions, print their output
+
+    def print_track(self, track):
+        print('\t' + track.tag  + ' , ' + self.get_track_id(
+            track))

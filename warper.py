@@ -1,8 +1,11 @@
 import re
+import xml.etree.ElementTree as et
+from als_modder import ALSModder
 
 # open and read file
-# filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a.xml'
-filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_b.xml'
+filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a.xml'
+# filename = '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_b.xml'
+# filename = './projects/drumrack_mod/TESTER.xml'
 xmlstring = open(filename, 'r').read()
 
 # unwarp all simplers
@@ -36,6 +39,12 @@ while i > 0:
     final_str = final_str[0:insertable_position_start] + copyable_device_string + final_str[insertable_position_start:]
     i -= 1
 
+als_modder = ALSModder('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a_output.xml', '../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a_output.xml')
+als_modder.load_source_string(final_str)
+als_modder.mod_ids()
+to_add = '<?xml version="1.0" encoding="UTF-8"?>\n'
+final_str = to_add + et.tostring(als_modder.source_tree).decode('utf-8')
+
 # write output
-# open('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a_output.xml', 'w').write(final_str)
-open('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_b_output.xml', 'w').write(final_str)
+open('../../PS 2018 Followthru/AUDIO ONLY CHORD TEMPLATE Project/scale_chord_a_output.xml', 'w').write(final_str)
+# open('./projects/drumrack_mod/output2.xml', 'w').write(final_str)
